@@ -35,9 +35,9 @@ fn main() {
     }
 
     let mut file = OpenOptions::new()
-        .read(true)
         .write(true)
         .create(true)
+        .truncate(true)
         .open(&cli.output_file)
         .expect(
             format!(
