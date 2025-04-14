@@ -1,11 +1,10 @@
 use std::{
     fs::OpenOptions,
     io::{Read, Write},
-    ops::Deref,
     path::PathBuf,
 };
 
-use clap::{arg, command, Parser, Subcommand, ValueHint};
+use clap::{arg, command, Parser, ValueHint};
 
 #[derive(Parser)]
 #[command(
@@ -14,7 +13,6 @@ use clap::{arg, command, Parser, Subcommand, ValueHint};
     long_about = "Reads diretory, its files and writes output to the given file so you can feed it to an LLM"
 )]
 struct Cli {
-    /// Optional name to operate on
     #[arg(value_name = "PATH_TO_DIRECTORY", value_hint=ValueHint::DirPath, help="path to the directory to read")]
     path: PathBuf,
 
@@ -39,49 +37,56 @@ fn main() {
         .create(true)
         .truncate(true)
         .open(&cli.output_file)
-        .expect(
-            format!(
+        .unwrap_or_else(|_| {
+            panic!(
                 "Couldn't open the file to write to: {}",
                 &cli.output_file.display()
             )
-            .as_str(),
-        );
+        });
 
     println!("Starting copying contents");
     for el in filtered_files {
-        write_contents_to_file(el, &mut file);
+        println!("Reading {}", &el.display());
+        let res = write_contents_to_file(&el, &mut file);
+        if res {
+            println!(
+                "Finished reading {} and writing to the output",
+                &el.display()
+            );
+        }
     }
     println!("Finished copying contents");
 }
 
-fn write_contents_to_file(input_path: PathBuf, output_file: &mut std::fs::File) {
-    let mut input_file = match OpenOptions::new().read(true).open(&input_path) {
+fn write_contents_to_file(input_path: &PathBuf, output_file: &mut std::fs::File) -> bool {
+    let mut input_file = match OpenOptions::new().read(true).open(input_path) {
         Err(e) => {
             eprintln!(
                 "Couldn't open the file {} to read, reason: {}",
                 &input_path.display(),
                 e
             );
-            return;
+            return false;
         }
         Ok(f) => f,
     };
     let mut contents: String = String::new();
-    let res = match input_file.read_to_string(&mut contents) {
+    let _ = match input_file.read_to_string(&mut contents) {
         Err(e) => {
             eprintln!(
                 "Couldn't read the file {} to get contents, because: {}",
                 input_path.display(),
                 e
             );
-            return;
+            return false;
         }
         Ok(r) => r,
     };
 
-    output_file.write_fmt(format_args!("{}", format!("```{}\n", input_path.display())));
-    output_file.write_fmt(format_args!("{}", contents));
-    output_file.write_fmt(format_args!("``` \n"));
+    let _ = output_file.write_fmt(format_args!("{}", format!("```{}\n", input_path.display())));
+    let _ = output_file.write_fmt(format_args!("{}", contents));
+    let _ = output_file.write_fmt(format_args!("``` \n"));
+    true
 }
 
 fn filter_files(pathes: Vec<PathBuf>, file_extensions: Option<Vec<String>>) -> Vec<PathBuf> {
@@ -108,8 +113,8 @@ fn read_directory(path: &PathBuf) -> Vec<PathBuf> {
         eprintln!("Couldn't read {} due to the error: {}", path.display(), e);
         return vec![];
     }
-    let mut dir_iter = dir_res.unwrap();
-    while let Some(dir_path) = dir_iter.next() {
+    let dir_iter = dir_res.unwrap();
+    for dir_path in dir_iter {
         match dir_path {
             Err(e) => {
                 eprintln!("Couldn't read a dir entry due to the error: {}", e);
