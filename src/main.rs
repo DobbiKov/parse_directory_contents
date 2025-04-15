@@ -31,6 +31,7 @@ fn main() {
     for el in &filtered_files {
         println!("{}", el.display());
     }
+    println!();
 
     match cli.output_file {
         None => {
@@ -53,13 +54,9 @@ fn main() {
 
             println!("Starting copying contents");
             for el in filtered_files {
-                println!("Reading {}", &el.display());
                 let res = write_contents_to_file(&el, &mut file);
                 if res {
-                    println!(
-                        "Finished reading {} and writing to the output",
-                        &el.display()
-                    );
+                    println!("{} - read and written successfully", &el.display());
                 }
             }
             println!("Finished copying contents");
@@ -70,7 +67,6 @@ fn main() {
 fn copy_contents_to_clipboard(input_files: Vec<PathBuf>) {
     let mut res: String = String::new();
     for el in input_files {
-        println!("Reading {}", &el.display());
         let contents = match copy_contents_from_file(&el) {
             Ok(r) => r,
             Err(e) => {
@@ -83,7 +79,7 @@ fn copy_contents_to_clipboard(input_files: Vec<PathBuf>) {
             }
         };
         res.push_str(&contents);
-        println!("Successfully read {}", &el.display());
+        println!("{} - read successfully", &el.display());
     }
 
     let mut clipboard = clippers::Clipboard::get();
