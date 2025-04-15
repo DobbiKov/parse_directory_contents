@@ -9,15 +9,15 @@ use clap::{arg, command, Parser, ValueHint};
 #[derive(Parser)]
 #[command(
     version,
-    about,
-    long_about = "Reads diretory, its files and writes output to the given file so you can feed it to an LLM"
+    about = "Parse the files in your directory to a clipboard or a file",
+    long_about = "Goes through the given diretory and copies the contents of its files to the clipboard OR if an output file is provided then the contents are written to the given file so you can feed it to an LLM"
 )]
 struct Cli {
     #[arg(value_name = "PATH_TO_DIRECTORY", value_hint=ValueHint::DirPath, help="path to the directory to read")]
     path: PathBuf,
 
-    #[arg(value_hint=ValueHint::FilePath, help="file to give output to")]
-    output_file: PathBuf,
+    #[arg(short, long, value_hint=ValueHint::FilePath, help="file to give output to")]
+    output_file: Option<PathBuf>,
 
     #[arg(short, long, value_name = "FILE_EXTENSIONS", help="extensions to read, if not set, the program reads all the files", num_args = 1..)]
     file_types: Option<Vec<String>>,
@@ -32,55 +32,88 @@ fn main() {
         println!("{}", el.display());
     }
 
-    let mut file = OpenOptions::new()
-        .write(true)
-        .create(true)
-        .truncate(true)
-        .open(&cli.output_file)
-        .unwrap_or_else(|_| {
-            panic!(
-                "Couldn't open the file to write to: {}",
-                &cli.output_file.display()
-            )
-        });
+    match cli.output_file {
+        None => {
+            println!("Starting copying contents");
+            copy_contents_to_clipboard(filtered_files);
+            println!("Finished copying contents");
+        }
+        Some(output_file) => {
+            let mut file = OpenOptions::new()
+                .write(true)
+                .create(true)
+                .truncate(true)
+                .open(&output_file)
+                .unwrap_or_else(|_| {
+                    panic!(
+                        "Couldn't open the file to write to: {}",
+                        &output_file.display()
+                    )
+                });
 
-    println!("Starting copying contents");
-    for el in filtered_files {
-        println!("Reading {}", &el.display());
-        let res = write_contents_to_file(&el, &mut file);
-        if res {
-            println!(
-                "Finished reading {} and writing to the output",
-                &el.display()
-            );
+            println!("Starting copying contents");
+            for el in filtered_files {
+                println!("Reading {}", &el.display());
+                let res = write_contents_to_file(&el, &mut file);
+                if res {
+                    println!(
+                        "Finished reading {} and writing to the output",
+                        &el.display()
+                    );
+                }
+            }
+            println!("Finished copying contents");
         }
     }
-    println!("Finished copying contents");
 }
 
-fn write_contents_to_file(input_path: &PathBuf, output_file: &mut std::fs::File) -> bool {
+fn copy_contents_to_clipboard(input_files: Vec<PathBuf>) {
+    let mut res: String = String::new();
+    for el in input_files {
+        println!("Reading {}", &el.display());
+        let contents = match copy_contents_from_file(&el) {
+            Ok(r) => r,
+            Err(e) => {
+                eprintln!(
+                    "Couldn't copy the contents of the file {} because: {}",
+                    &el.display(),
+                    e
+                );
+                continue;
+            }
+        };
+        res.push_str(&contents);
+        println!("Successfully read {}", &el.display());
+    }
+
+    let mut clipboard = clippers::Clipboard::get();
+    match clipboard.write_text(res) {
+        Ok(_) => println!("Successfully copied the contents of all the files to clipboard"),
+        Err(e) => eprintln!("Couldn't copy the contents to the clipboard because: {}", e),
+    }
+}
+
+fn copy_contents_from_file(input_path: &PathBuf) -> Result<String, std::io::Error> {
     let mut input_file = match OpenOptions::new().read(true).open(input_path) {
         Err(e) => {
-            eprintln!(
-                "Couldn't open the file {} to read, reason: {}",
-                &input_path.display(),
-                e
-            );
-            return false;
+            return Err(e);
         }
         Ok(f) => f,
     };
     let mut contents: String = String::new();
     let _ = match input_file.read_to_string(&mut contents) {
         Err(e) => {
-            eprintln!(
-                "Couldn't read the file {} to get contents, because: {}",
-                input_path.display(),
-                e
-            );
-            return false;
+            return Err(e);
         }
         Ok(r) => r,
+    };
+    Ok(contents)
+}
+
+fn write_contents_to_file(input_path: &PathBuf, output_file: &mut std::fs::File) -> bool {
+    let contents = match copy_contents_from_file(input_path) {
+        Ok(r) => r,
+        Err(_) => return false,
     };
 
     let _ = output_file.write_fmt(format_args!("{}", format!("```{}\n", input_path.display())));
