@@ -78,7 +78,10 @@ fn copy_contents_to_clipboard(input_files: Vec<PathBuf>) {
                 continue;
             }
         };
+
+        res.push_str(&format!("```{}\n", &el.display()));
         res.push_str(&contents);
+        res.push_str("```\n");
         println!("{} - read successfully", &el.display());
     }
 
