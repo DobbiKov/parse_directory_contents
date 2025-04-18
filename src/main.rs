@@ -24,22 +24,29 @@ struct Cli {
 
     #[arg(long, default_value_t = false, action=clap::ArgAction::SetTrue, required=false)]
     disable_gitignore: bool,
+
+    #[arg(short, long, value_name = "EXCLUDE_FILES", help="files and directories that won't be copied", num_args = 1..)]
+    exclude: Option<Vec<String>>,
 }
 
 fn main() {
     let cli = Cli::parse();
 
-    let ignored: Vec<PathBuf> = match cli.disable_gitignore {
+    // setting files and directories to ignore
+    let mut ignored: Vec<PathBuf> = match cli.disable_gitignore {
         true => vec![],
-        false => {
-            println!("The next files and directories will be ignored:");
-            let temp_res = get_paths_from_gitignore();
-            for ig_file in &temp_res {
-                println!("{}", ig_file.display());
-            }
-            temp_res
-        }
+        false => get_paths_from_gitignore(),
     };
+
+    let mut excluded: Vec<PathBuf> = get_exluded_files(cli.exclude);
+    ignored.append(&mut excluded);
+
+    let ignored = ignored; // making ignored immutable
+
+    println!("The next files and directories will be ignored:");
+    for ig_file in &ignored {
+        println!("{}", ig_file.display());
+    }
 
     let filtered_files = filter_files(read_directory(&cli.path, &ignored), cli.file_types);
     println!("Files the content will be parsed of:");
@@ -215,4 +222,14 @@ fn get_paths_from_gitignore() -> Vec<PathBuf> {
         }
     }
     res
+}
+fn get_exluded_files(paths: Option<Vec<String>>) -> Vec<PathBuf> {
+    if paths.is_none() {
+        return vec![];
+    }
+    let paths = paths.unwrap();
+    paths
+        .into_iter()
+        .map(|e| PathBuf::from("./").join(e))
+        .collect()
 }
