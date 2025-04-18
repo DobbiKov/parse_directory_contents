@@ -2,7 +2,6 @@
 name = "files_to_llm"
 version = "0.1.0"
 edition = "2021"
-edition = "2021"
 license = "MIT"
 description = "A CLI to parse your directory files contents to clipboard or an output file in order to simplify the work with LLMs"
 homepage = "https://github.com/DobbiKov/parse_directory_contents"
