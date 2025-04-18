@@ -17,6 +17,10 @@ The copied format is:
 
 Useful if you have a huge project and you want to copy the contents of each file with it's name and give it to a LLM for a prompt.
 
+By default, all the folders and files written in the .gitignore won't be parsed and copied. However, you can specify using `--disable-gitignore` flag in order to copy them as well.
+
+It's possible to specify files and folders that should be excluded (i.e not to be parsed) using `-e` flag and provide files and folders to exclude.
+
 ## Usage:
 ```
 files_to_llm <path_to_dir> 
