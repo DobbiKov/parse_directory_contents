@@ -69,6 +69,24 @@ files_to_llm . -o output.txt -f rs toml
 
 It will copy the contents of each file  that is of type `.rs` or `.toml` in the current directory to the `output.txt` file (attention: it won't copy to the clipboard!).
 
+#### Disable gitignore example
+```
+files_to_llm . --disable-gitignore
+```
+This will copy all the files from the current directory even the ones listed in the `.gitignore` files
+
+#### If you want to exclude specific files or directories
+```
+files_to_llm <path_to_dir> -e <path1> <path2>
+```
+
+Example:
+```
+files_to_llm . -e .git output.txt
+```
+It will copy all the files except the ones that are in the `.git` directory and `output.txt` file.
+
+
 ## Installation
 1. Ensure you have cargo installed
 2. `git clone https://github.com/DobbiKov/parse_directory_to_file`
