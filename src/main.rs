@@ -21,12 +21,27 @@ struct Cli {
 
     #[arg(short, long, value_name = "FILE_EXTENSIONS", help="extensions to read, if not set, the program reads all the files", num_args = 1..)]
     file_types: Option<Vec<String>>,
+
+    #[arg(long, default_value_t = false, action=clap::ArgAction::SetTrue, required=false)]
+    disable_gitignore: bool,
 }
 
 fn main() {
     let cli = Cli::parse();
 
-    let filtered_files = filter_files(read_directory(&cli.path), cli.file_types);
+    let ignored: Vec<PathBuf> = match cli.disable_gitignore {
+        true => vec![],
+        false => {
+            println!("The next files and directories will be ignored:");
+            let temp_res = get_paths_from_gitignore();
+            for ig_file in &temp_res {
+                println!("{}", ig_file.display());
+            }
+            temp_res
+        }
+    };
+
+    let filtered_files = filter_files(read_directory(&cli.path, &ignored), cli.file_types);
     println!("Files the content will be parsed of:");
     for el in &filtered_files {
         println!("{}", el.display());
@@ -138,7 +153,7 @@ fn filter_files(pathes: Vec<PathBuf>, file_extensions: Option<Vec<String>>) -> V
         .collect()
 }
 
-fn read_directory(path: &PathBuf) -> Vec<PathBuf> {
+fn read_directory(path: &PathBuf, ignore: &Vec<PathBuf>) -> Vec<PathBuf> {
     let dir_res = std::fs::read_dir(path);
     let mut res: Vec<PathBuf> = Vec::new();
     if let Err(e) = dir_res {
@@ -154,14 +169,48 @@ fn read_directory(path: &PathBuf) -> Vec<PathBuf> {
             }
             Ok(entry) => {
                 let entry_path = entry.path();
+
+                if ignore.contains(&entry_path) {
+                    continue;
+                }
+
                 if entry_path.is_dir() {
-                    let temp_res = read_directory(&entry_path);
+                    let temp_res = read_directory(&entry_path, &ignore);
                     for el in temp_res {
                         res.push(el);
                     }
                 } else {
                     res.push(entry_path);
                 }
+            }
+        }
+    }
+    res
+}
+
+fn get_paths_from_gitignore() -> Vec<PathBuf> {
+    let mut res: Vec<PathBuf> = vec![];
+    let mut file = match OpenOptions::new().read(true).open(".gitignore") {
+        Err(e) => {
+            return res;
+        }
+        Ok(f) => f,
+    };
+    let mut contents = String::new();
+    if let Err(_) = file.read_to_string(&mut contents) {
+        return res;
+    }
+    if contents.len() == 0 {
+        return res;
+    }
+
+    if !contents.contains("\n") {
+        res.push(PathBuf::from("./").join(contents));
+    } else {
+        let lines = contents.split("\n");
+        for line in lines {
+            if line.len() > 0 {
+                res.push(PathBuf::from("./").join(line));
             }
         }
     }
