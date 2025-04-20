@@ -1,7 +1,8 @@
+use ignore;
 use std::{
     fs::OpenOptions,
-    io::{Read, Write},
-    path::PathBuf,
+    io::{self, Read, Write},
+    path::{Path, PathBuf},
 };
 
 use clap::{arg, command, Parser, ValueHint};
@@ -33,27 +34,10 @@ fn main() {
     let cli = Cli::parse();
 
     // setting files and directories to ignore
-    let mut ignored: Vec<PathBuf> = match cli.disable_gitignore {
-        true => vec![],
-        false => get_paths_from_gitignore(),
-    };
+    let excluded: Vec<PathBuf> = get_exluded_files(cli.exclude);
 
-    let mut excluded: Vec<PathBuf> = get_exluded_files(cli.exclude);
-    ignored.append(&mut excluded);
-
-    let ignored = ignored; // making ignored immutable
-
-    println!("The next files and directories will be ignored:");
-    for ig_file in &ignored {
-        println!("{}", ig_file.display());
-    }
-
-    let filtered_files = filter_files(read_directory(&cli.path, &ignored), cli.file_types);
-    println!("Files the content will be parsed of:");
-    for el in &filtered_files {
-        println!("{}", el.display());
-    }
-    println!();
+    let files = read_directory_iter(&cli.path, cli.disable_gitignore, excluded);
+    let filtered_files = filter_files(files, cli.file_types);
 
     match cli.output_file {
         None => {
@@ -62,28 +46,32 @@ fn main() {
             println!("Finished copying contents");
         }
         Some(output_file) => {
-            let mut file = OpenOptions::new()
-                .write(true)
-                .create(true)
-                .truncate(true)
-                .open(&output_file)
-                .unwrap_or_else(|_| {
-                    panic!(
-                        "Couldn't open the file to write to: {}",
-                        &output_file.display()
-                    )
-                });
-
             println!("Starting copying contents");
-            for el in filtered_files {
-                let res = write_contents_to_file(&el, &mut file);
-                if res {
-                    println!("{} - read and written successfully", &el.display());
-                }
+            if let Err(e) = copy_all_to_the_file(filtered_files, output_file) {
+                panic!(
+                    "Couldn't write all the contents to the files because: {}",
+                    e
+                );
             }
             println!("Finished copying contents");
         }
     }
+}
+
+fn copy_all_to_the_file(files: Vec<PathBuf>, output_file_name: PathBuf) -> std::io::Result<()> {
+    let mut file = OpenOptions::new()
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .open(&output_file_name)?;
+
+    for el in files {
+        let res = write_contents_to_file(&el, &mut file);
+        if res {
+            println!("{} - read and written successfully", &el.display());
+        }
+    }
+    Ok(())
 }
 
 fn copy_contents_to_clipboard(input_files: Vec<PathBuf>) {
@@ -158,6 +146,38 @@ fn filter_files(pathes: Vec<PathBuf>, file_extensions: Option<Vec<String>>) -> V
             }
         })
         .collect()
+}
+
+fn read_directory_iter(
+    path: &PathBuf,
+    read_from_gitignore: bool,
+    exclude: Vec<PathBuf>,
+) -> Vec<PathBuf> {
+    let mut builder = ignore::WalkBuilder::new(path);
+
+    builder.git_ignore(!read_from_gitignore);
+
+    builder.filter_entry(move |entry: &ignore::DirEntry| {
+        let entry_path = entry.path();
+        !exclude.iter().any(|ex| entry_path.starts_with(ex))
+    });
+
+    let walker = builder.build();
+    let res: Vec<PathBuf> = walker
+        .filter_map(|r| {
+            if let Ok(v) = r {
+                let t_path = v.into_path();
+                if t_path.is_file() {
+                    Some(t_path)
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        })
+        .collect();
+    res
 }
 
 fn read_directory(path: &PathBuf, ignore: &Vec<PathBuf>) -> Vec<PathBuf> {

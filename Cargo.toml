@@ -13,3 +13,4 @@ authors = ["DobbiKov <dobbikov@gmail.com>"]
 [dependencies]
 clap = { version = "4.5.36", features = ["derive"] }
 clippers = "0.1.2"
+ignore = "0.4.23"
