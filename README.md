@@ -93,3 +93,17 @@ It will copy all the files except the ones that are in the `.git` directory and 
 3. `cd parse_directory_to_file`
 4. `cargo build -r`
 5. `sudo cp ./target/release/files_to_llm /usr/bin/` or `sudo cp ./target/release/files_to_llm /usr/local/bin/` 
+
+## Change log
+
+### Version 0.1.1
+This version improves the algorithm of the recursive directory walk and reading `.gitignore` files using `ignore` crate and improving the reliability of the CLI.
+
+### Version 0.1.0
+This version provides the next features:
+- Walking through directory recursively and copy the contents of the files to:
+    - Clipboard
+    - Specified output file
+- Choosing files and directories to ignore
+- Choose specific file extensions to read
+- Choose to read the files and directories from `.gitignore` file as well
