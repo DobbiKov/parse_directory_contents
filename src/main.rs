@@ -17,13 +17,13 @@ struct Cli {
     #[arg(value_name = "PATH_TO_DIRECTORY", value_hint=ValueHint::DirPath, help="path to the directory to read")]
     path: PathBuf,
 
-    #[arg(short, long, value_hint=ValueHint::FilePath, help="file to give output to")]
+    #[arg(short, long, value_hint=ValueHint::FilePath, help="file to give the output to")]
     output_file: Option<PathBuf>,
 
     #[arg(short, long, value_name = "FILE_EXTENSIONS", help="extensions to read, if not set, the program reads all the files", num_args = 1..)]
     file_types: Option<Vec<String>>,
 
-    #[arg(long, default_value_t = false, action=clap::ArgAction::SetTrue, required=false)]
+    #[arg(long, default_value_t = false, action=clap::ArgAction::SetTrue, required=false, help="when this flag is set, the files and directories listed in the gitignore file will be parsed as well")]
     disable_gitignore: bool,
 
     #[arg(short, long, value_name = "EXCLUDE_FILES", help="files and directories that won't be copied", num_args = 1..)]
