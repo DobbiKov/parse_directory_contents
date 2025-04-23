@@ -96,6 +96,9 @@ It will copy all the files except the ones that are in the `.git` directory and 
 
 ## Change log
 
+### Version 0.1.2
+The help texts inside of the CLI have been improved.
+
 ### Version 0.1.1
 This version improves the algorithm of the recursive directory walk and reading `.gitignore` files using `ignore` crate and improving the reliability of the CLI.
 
