@@ -10,23 +10,50 @@ use clap::{arg, command, Parser, ValueHint};
 #[derive(Parser)]
 #[command(
     version,
-    about = "Parse the files in your directory to a clipboard or a file",
-    long_about = "Goes through the given diretory and copies the contents of its files to the clipboard OR if an output file is provided then the contents are written to the given file so you can feed it to an LLM"
+    about = "Parses files from a directory and copies their contents to the clipboard or an output file.",
+    long_about = "Recursively reads the contents of files in the specified directory. By default, it copies them to your clipboard. If an output file is specified, it writes all the contents to that file instead—ideal for feeding the text into an LLM."
 )]
 struct Cli {
-    #[arg(value_name = "PATH_TO_DIRECTORY", value_hint=ValueHint::DirPath, help="path to the directory to read")]
+    #[arg(
+        value_name = "PATH_TO_DIRECTORY",
+        value_hint = ValueHint::DirPath,
+        help = "Path to the directory whose files should be read."
+    )]
     path: PathBuf,
 
-    #[arg(short, long, value_hint=ValueHint::FilePath, help="file to give the output to")]
+    #[arg(
+        short,
+        long,
+        value_hint = ValueHint::FilePath,
+        help = "Optional file to write the output to instead of copying to the clipboard."
+    )]
     output_file: Option<PathBuf>,
 
-    #[arg(short, long, value_name = "FILE_EXTENSIONS", help="extensions to read, if not set, the program reads all the files", num_args = 1..)]
+    #[arg(
+        short,
+        long,
+        value_name = "FILE_EXTENSIONS",
+        help = "Space-separated list of file extensions to include (e.g. txt rs md). If not provided, all files are included.",
+        num_args = 1..
+    )]
     file_types: Option<Vec<String>>,
 
-    #[arg(long, default_value_t = false, action=clap::ArgAction::SetTrue, required=false, help="when this flag is set, the files and directories listed in the gitignore file will be parsed as well")]
+    #[arg(
+        long,
+        default_value_t = false,
+        action = clap::ArgAction::SetTrue,
+        required = false,
+        help = "If set, includes files and directories listed in the .gitignore file."
+    )]
     disable_gitignore: bool,
 
-    #[arg(short, long, value_name = "EXCLUDE_FILES", help="files and directories that won't be copied", num_args = 1..)]
+    #[arg(
+        short,
+        long,
+        value_name = "EXCLUDE_FILES",
+        help = "List of files or directories to exclude from reading.",
+        num_args = 1..
+    )]
     exclude: Option<Vec<String>>,
 }
 
